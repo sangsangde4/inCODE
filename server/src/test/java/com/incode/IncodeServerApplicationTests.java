@@ -1,4 +1,4 @@
-package com.incode.server;
+package com.incode;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
