@@ -83,7 +83,7 @@
 		<dependency>
 			<groupId>com.mysql</groupId>
 			<artifactId>mysql-connector-j</artifactId>
-			<scope>runtime</scope> <!-- 表示只在运行时需要 -->
+			<version>8.2.0</version>
 		</dependency>
 
 		<!-- MyBatis-Plus 框架 -->
