@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Form, Input, Button, Card, Typography, message, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { history } from 'umi';
+import { useRequest } from 'ahooks';
 
 const { Title, Paragraph } = Typography;
 
@@ -12,36 +12,61 @@ interface LoginForm {
   remember: boolean;
 }
 
+// 1. 封装登录请求服务
+// 这是一个独立的函数，负责调用 API
+// useRequest 会将表单数据作为第一个参数传递给它
+async function loginService(values: Pick<LoginForm, 'username' | 'password'>) {
+  // 注意：这里我们假设有一个代理或直接可访问的后端服务
+  // 在实际项目中，你可能需要配置 Umi 的代理来解决跨域问题
+  const response = await fetch('http://localhost:8080/api/admin/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(values),
+  });
+
+  if (!response.ok) {
+    // 如果 HTTP 状态码不是 2xx，也认为是错误
+    const errorData = await response.json().catch(() => ({})); // 尝试解析错误信息
+    throw new Error(errorData.message || '网络请求失败');
+  }
+
+  const data = await response.json();
+
+  if (data.success) {
+    return data; // 成功时，返回整个数据对象
+  } else {
+    // 如果业务上失败，也抛出错误
+    throw new Error(data.message || '登录失败');
+  }
+}
+
 const AdminLogin: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
-  const onFinish = async (values: LoginForm) => {
-    setLoading(true);
-    try {
-      const response = await axios.post('http://localhost:8080/api/admin/login', {
-        username: values.username,
-        password: values.password
-      });
+  // 2. 使用 useRequest 管理登录逻辑
+  const { loading, run: runLogin } = useRequest(loginService, {
+    manual: true, // 设置为手动触发，不在组件加载时自动执行
+    onSuccess: (result, params) => {
+      // 登录成功后的回调
+      localStorage.setItem('admin_token', result.token);
+      localStorage.setItem('admin_user', JSON.stringify(result.user));
+      message.success('登录成功！');
+      history.push('/admin/dashboard');
+    },
+    onError: (error) => {
+      // 登录失败后的回调
+      message.error(error.message);
+      history.push('/admin/dashboard'); // 即使失败也跳转，与原逻辑保持一致
+    },
+  });
 
-      if (response.data.success) {
-        // 保存token和用户信息
-        localStorage.setItem('admin_token', response.data.token);
-        localStorage.setItem('admin_user', JSON.stringify(response.data.user));
-        
-        message.success('登录成功！');
-        navigate('/admin/dashboard');
-      } else {
-        message.error(response.data.message || '登录失败');
-        navigate('/admin/dashboard');
-      }
-    } catch (error: any) {
-      console.error('登录失败:', error);
-      navigate('/admin/dashboard');
-      message.error(error.response?.data?.message || '登录失败，请检查网络连接');
-    } finally {
-      setLoading(false);
-    }
+  // 3. 表单提交时，调用 runLogin 来触发请求
+  const onFinish = (values: LoginForm) => {
+    runLogin({
+      username: values.username,
+      password: values.password,
+    });
   };
 
   return (
@@ -110,7 +135,7 @@ const AdminLogin: React.FC = () => {
             <Button
               type="primary"
               htmlType="submit"
-              loading={loading}
+              loading={loading} // loading 状态由 useRequest 自动管理
               style={{ width: '100%', height: '44px' }}
             >
               登录

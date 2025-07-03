@@ -13,8 +13,7 @@ import {
   EditOutlined,
   DeleteOutlined
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { history } from 'umi';
 
 const { Header, Sider, Content } = Layout;
 
@@ -28,7 +27,7 @@ const AdminDashboard: React.FC = () => {
     docCount: 0,
     viewCount: 0
   });
-  const navigate = useNavigate();
+  const navigate = history.push;
 
   useEffect(() => {
     // 获取用户信息
